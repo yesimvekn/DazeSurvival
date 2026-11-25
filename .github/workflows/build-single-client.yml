@@ -1,0 +1,40 @@
+name: Build downloadable single-file client
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-single-client:
+    name: Daze Survival HTML export
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build one-file client
+        run: bun build:client:single
+
+      - name: Check export exists
+        run: test -s client/dist-single/DazeSurvival.html
+
+      - name: Upload HTML file
+        uses: actions/upload-artifact@v4
+        with:
+          name: DazeSurvival-html-client
+          path: client/dist-single/DazeSurvival.html
+          if-no-files-found: error
+          compression-level: 0
