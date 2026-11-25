@@ -25,6 +25,18 @@ bun start
 
 The production server serves the built client and API on its main port, and runs game WebSocket workers on the following ports.
 
+## One-file client export
+
+To package the browser UI and its built assets into one HTML file, run:
+
+```sh
+bun build:client:single
+```
+
+The output is `client/dist-single/DazeSurvival.html`. It is a single portable HTML file with JavaScript, CSS, fonts, image atlases, and audio atlases embedded. Upload that HTML file to a static host to get a shareable web link. It still needs a running Daze Survival multiplayer server; the HTML file does not contain the game server.
+
+When the HTML is served from the same public origin as the game server, it uses that server automatically. If the static host is separate, set a server base URL in the link, e.g. `https://your-static-host.example/DazeSurvival.html?server=https://your-game-host.example:8000`. Configure the server's allowed CORS origin for that static site, and make the consecutive game-worker WebSocket ports reachable. HTTPS pages require secure `wss://` worker sockets (normally set up through a TLS reverse proxy).
+
 ## Wispbyte deployment
 
 This repository includes a Bun startup path suitable for a Wispbyte server/container that supports Bun. Upload or deploy the repository, then use:
@@ -32,8 +44,8 @@ This repository includes a Bun startup path suitable for a Wispbyte server/conta
 - **Install/build command:** `bun install --frozen-lockfile && bun build:client`
 - **Startup command:** `bun start`
 - **Environment:** set `PORT` to the main allocated port; set `HOST=0.0.0.0` (the server also defaults to this bind address).
-- **Ports:** allocate and expose the main port **plus one consecutive port per configured game worker**. With the provided `maxGames: 1`, allocate the main port and the next port. Worker game 0 listens on `PORT + 1`. Ports must be consecutive because the game manager assigns worker ports by offset.
-- **Client URL:** open the game at the main allocation. The browser discovers the same hostname and connects to the worker port. If you put the game behind HTTPS, configure a TLS-capable reverse proxy for the API and every worker WebSocket port; browsers will block insecure `ws://` connections from an HTTPS page. Direct allocation access should use HTTP unless Wispbyte provides TLS for those ports.
+- **Ports:** allocate and expose the main port plus one consecutive port per configured game worker. With the provided `maxGames: 1`, allocate the main port and the next port. Worker game 0 listens on `PORT + 1`.
+- **Client URL:** open the game at the main allocation. When hosting the single-file client separately, use the `?server=` URL parameter shown above.
 
 The server reads `PORT` and `HOST` at startup. Do not commit credentials or development role passwords. The example configuration is intentionally free of privileged roles.
 

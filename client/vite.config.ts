@@ -7,17 +7,18 @@ import pkg from "../package.json";
 const DIRNAME = dirname(fileURLToPath(import.meta.url));
 export default defineConfig(async({ command, mode }) => {
     const isDev = command === "serve" && mode === "development";
+    const isSingleFile = mode === "single";
 
-    // temporary hack until svelte rewrite
     process.env = {
         ...process.env,
         VITE_APP_VERSION: pkg.version,
         DEBUG_CLIENT: isDev.toString()
     };
 
-    // So output directory isn't included (thanks Vite).
-    if (isDev) {
-        if (existsSync(resolve(DIRNAME, "./dist"))) { rmSync(resolve(DIRNAME, "./dist"), { recursive: true, force: true }); }
+    if (isDev && existsSync(resolve(DIRNAME, "./dist"))) {
+        rmSync(resolve(DIRNAME, "./dist"), { recursive: true, force: true });
     }
+
+    if (isSingleFile) return (await import("./vite/vite.single")).default;
     return (isDev ? await import("./vite/vite.dev") : await import("./vite/vite.prod")).default;
 });

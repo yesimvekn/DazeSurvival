@@ -1,11 +1,12 @@
 {
-  "name": "@suroi/client",
-  "description": "",
+  "name": "@daze-survival/client",
+  "description": "Daze Survival browser client",
   "main": "src/index.js",
   "type": "module",
   "private": true,
   "scripts": {
     "build:client": "bunx --bun vite build",
+    "build:single": "bunx --bun vite build --mode single",
     "dev": "vite"
   },
   "license": "GPL-3.0",

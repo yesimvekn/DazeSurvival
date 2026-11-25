@@ -4,6 +4,7 @@
   "description": "A 2D multiplayer battle royale game.",
   "scripts": {
     "build:client": "cd client && bun build:client",
+    "build:client:single": "cd client && bun build:single",
     "start": "cd server && bun .",
     "dev": "bun -F '*' dev",
     "dev:client": "cd client && bun dev",
