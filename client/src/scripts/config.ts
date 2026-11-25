@@ -1,51 +1,26 @@
 import { type TeamMode } from "@common/constants";
 import type { ModeName } from "@common/definitions/modes";
 
+// The site and game server share the main Wispbyte allocation. Game workers
+// use consecutive ports after it (PORT + game ID + 1).
+const pageProtocol = typeof window === "undefined" ? "http:" : window.location.protocol;
+const pageHost = typeof window === "undefined" ? "127.0.0.1" : window.location.hostname;
+const pagePort = typeof window === "undefined" ? "8000" : window.location.port;
+const httpProtocol = pageProtocol === "https:" ? "https:" : "http:";
+const wsProtocol = pageProtocol === "https:" ? "wss:" : "ws:";
+const authority = `${pageHost}${pagePort ? `:${pagePort}` : ""}`;
+const workerAuthority = `${pageHost}:<gameID>`;
+
 export const Config = {
     regions: {
-        dev: {
-            name: "Local Server",
-            mainAddress: "http://127.0.0.1:8000",
-            gameAddress: "ws://127.0.0.1:<gameID>",
-            offset: 8001
-        }/* ,
-        na: {
-            name: "North America",
-            flag: "🇺🇸 ",
-            mainAddress: "https://na.suroi.io",
-            gameAddress: "wss://na.suroi.io/game/<gameID>",
+        daze: {
+            name: "Daze Survival",
+            mainAddress: `${httpProtocol}//${authority}`,
+            gameAddress: `${wsProtocol}//${workerAuthority}`,
             offset: 1
-        },
-        eu: {
-            name: "Europe",
-            flag: "🇩🇪 ",
-            mainAddress: "https://eu.suroi.io",
-            gameAddress: "wss://eu.suroi.io/game/<gameID>",
-            offset: 1
-        },
-        sa: {
-            name: "South America",
-            flag: "🇧🇷 ",
-            mainAddress: "https://sa.suroi.io",
-            gameAddress: "wss://sa.suroi.io/game/<gameID>",
-            offset: 1
-        },
-        as: {
-            name: "Asia",
-            flag: "🇭🇰 ",
-            mainAddress: "https://as.suroi.io",
-            gameAddress: "wss://as.suroi.io/game/<gameID>",
-            offset: 1
-        },
-        oc: {
-            name: "Oceania",
-            flag: "🇦🇺 ",
-            mainAddress: "https://oc.suroi.io",
-            gameAddress: "wss://oc.suroi.io/game/<gameID>",
-            offset: 1
-        } */
+        }
     },
-    defaultRegion: "dev"
+    defaultRegion: "daze"
 } satisfies ConfigType as ConfigType;
 
 export interface ConfigType {
@@ -54,31 +29,10 @@ export interface ConfigType {
 }
 
 export interface Region {
-    /**
-     * The human-readable name of the region, displayed in the server selector.
-     */
     readonly name: string
-
-    /**
-     * An emoji flag to display alongside the region name.
-     */
     readonly flag?: string
-
-    /**
-     * The address of the region's main server.
-     */
     readonly mainAddress: string
-
-    /**
-     * Pattern used to determine the address of the region's game servers.
-     * The string `<gameID>` is replaced by the `gameID` given by the /getGame API, plus {@linkcode offset}.
-     * For example, if `gameID` is 0, `gameAddress` is `"wss://na.suroi.io/game/<gameID>"`, and `offset` is 1, the resulting address will be wss://na.suroi.io/game/1.
-     */
     readonly gameAddress: string
-
-    /**
-     * Number to increment `gameID` by when determining the game address. See {@linkcode gameAddress} for more info.
-     */
     readonly offset: number
 }
 

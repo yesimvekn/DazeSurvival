@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { resolve, sep } from "node:path";
 import Cluster from "node:cluster";
 import { URLSearchParams } from "node:url";
 import { GameConstants, TeamMode } from "@common/constants";
@@ -29,43 +31,13 @@ declare global {
     var initialSetupComplete: boolean | undefined
 }
 
-//
-// Code for
-//
-// const name = "infection";
-// const mapDef = Maps[name];
-// console.log(
-//     getReachableBuildings(mapDef)
-//         .map(o => `public/img/game/buildings/${o.idString}`)
-//         .sort()
-//         .join("\n")
-// );
-// console.log(
-//     Array.from(new Set([
-//         ...[
-//             ...Object.keys(mapDef.obstacles ?? {}),
-//             ...Object.keys(mapDef.rivers?.obstacles ?? {}),
-//             ...(mapDef.obstacleClumps ?? []).flatMap(c => c.clump.obstacles),
-//         ].map(o => Obstacles.fromString(o)),
-//         ...getReachableObstacles(mapDef, getReachableBuildings(mapDef))
-//     ]))
-//         .filter(o => !o.wall && !o.invisible)
-//         .map(o => `public/img/game/obstacles/${o.idString}`)
-//         .sort()
-//         .join("\n")
-// );
-
 if (Cluster.isPrimary && require.main === module) {
-    //                   ^^^^^^^^^^^^^^^^^^^^^^^ only starts server if called directly from command line (not imported)
-
-    // Cleans up workers from previous runs if the process is hot reloaded
     for (const worker of Object.values(Cluster.workers ?? {})) {
         worker?.kill();
     }
 
     const gameManager = new GameManager();
 
-    // Prevents multiple loops from piling up if the process is hot reloaded
     if (!globalThis.initialSetupComplete) {
         let exiting = false;
         const exit = (): void => {
@@ -92,27 +64,41 @@ if (Cluster.isPrimary && require.main === module) {
 
         setInterval(() => {
             const memoryUsage = process.memoryUsage().rss;
-
             let perfString = `RAM usage: ${Math.round(memoryUsage / 1024 / 1024 * 100) / 100} MB`;
-
-            // windows L
             if (os.platform() !== "win32") {
                 const load = os.loadavg().join("%, ");
                 perfString += ` | CPU usage (1m, 5m, 15m): ${load}%`;
             }
-
             serverLog(perfString);
-
             gameManager.updateMapScaleRange();
         }, 60000);
     }
     globalThis.initialSetupComplete = true;
 
     customTeams = new Map<string, CustomTeam>();
-
     teamsCreated = Config.maxCustomTeams
         ? new RateLimiter(Config.maxCustomTeams)
         : undefined;
+
+    const clientRoot = resolve(import.meta.dir, "../../client/dist");
+    const clientRoute = {
+        "/*": (req: Bun.BunRequest) => {
+            let pathname: string;
+            try {
+                pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+            } catch {
+                return new Response("Bad request", { status: 400 });
+            }
+            const requestedPath = pathname === "/" ? "index.html" : pathname.replace(/^\\/+/, "");
+            const filePath = resolve(clientRoot, requestedPath);
+            if (filePath !== clientRoot && !filePath.startsWith(`${clientRoot}${sep}`)) {
+                return new Response("Not found", { status: 404 });
+            }
+            return existsSync(filePath)
+                ? new Response(Bun.file(filePath))
+                : new Response("Not found", { status: 404 });
+        }
+    };
 
     Bun.serve({
         hostname: Config.hostname,
@@ -123,9 +109,7 @@ if (Cluster.isPrimary && require.main === module) {
                 if (new URLSearchParams(req.url.slice(req.url.indexOf("?"))).get("checkPunishments") === "true") {
                     punishment = await getPunishment(getIP(req, res));
                 }
-
                 const { playerCount, teamMode, map, mode, nextMode } = gameManager;
-
                 return Response.json({
                     protocolVersion: GameConstants.protocolVersion,
                     playerCount,
@@ -146,11 +130,8 @@ if (Cluster.isPrimary && require.main === module) {
                 } else {
                     gameID = await gameManager.findGame();
                 }
-
                 return Response.json(
-                    gameID !== undefined
-                        ? { success: true, gameID, mode: gameManager.mode }
-                        : { success: false },
+                    gameID !== undefined ? { success: true, gameID, mode: gameManager.mode } : { success: false },
                     corsHeaders
                 );
             },
@@ -158,8 +139,6 @@ if (Cluster.isPrimary && require.main === module) {
                 const ip = getIP(req, res);
                 const searchParams = getSearchParams(req);
                 let punishmentMessage: string | undefined;
-
-                // Prevent connection if it's solos + check rate limits & punishments
                 if (
                     gameManager.teamMode.current === TeamMode.Solo
                     || teamsCreated?.isLimited(ip)
@@ -167,44 +146,32 @@ if (Cluster.isPrimary && require.main === module) {
                 ) {
                     return new Response("403 Forbidden");
                 }
-
-                // Get team
                 const teamID = searchParams.get("teamID");
                 let team: CustomTeam;
                 if (teamID !== null) {
                     const givenTeam = customTeams?.get(teamID);
                     if (!givenTeam || givenTeam.locked || givenTeam.players.length >= (gameManager.teamMode.current as number)) {
-                        return new Response("403 Forbidden"); // TODO "Team is locked" and "Team is full" messages
+                        return new Response("403 Forbidden");
                     }
                     team = givenTeam;
                 } else {
                     team = new CustomTeam(gameManager);
                     customTeams?.set(team.id, team);
                 }
-
-                // Get name, skin, badge, & role
                 const name = punishmentMessage === "noname" ? GameConstants.player.defaultName : cleanUsername(searchParams.get("name"));
                 let skin = searchParams.get("skin") ?? GameConstants.player.defaultSkin;
                 let badge = searchParams.get("badge") ?? undefined;
                 const { role = "", nameColor } = parseRole(searchParams);
-
-                // Validate skin
                 const skinDefinition = Skins.fromStringSafe(skin);
                 const rolesRequired = skinDefinition?.rolesRequired;
                 if (!skinDefinition || (rolesRequired && !rolesRequired.includes(role))) {
                     skin = GameConstants.player.defaultSkin;
                 }
-
-                // Validate badge
                 const badgeDefinition = badge ? Badges.fromStringSafe(badge) : undefined;
                 if (!badgeDefinition || (badgeDefinition.roles && !badgeDefinition.roles.includes(role))) {
                     badge = undefined;
                 }
-
-                // Upgrade the connection
-                res.upgrade(req, {
-                    data: { player: new CustomTeamPlayer(ip, team, name, skin, badge, nameColor) }
-                });
+                res.upgrade(req, { data: { player: new CustomTeamPlayer(ip, team, name, skin, badge, nameColor) } });
             }
         },
         websocket: {
@@ -214,7 +181,6 @@ if (Cluster.isPrimary && require.main === module) {
                 player.socket = socket;
                 player.team.addPlayer(player);
             },
-
             message(socket: Bun.ServerWebSocket<CustomTeamPlayerContainer>, message: Buffer) {
                 try {
                     const { player } = socket.data;
@@ -223,23 +189,20 @@ if (Cluster.isPrimary && require.main === module) {
                     serverError("Error parsing team socket message. Details:", e);
                 }
             },
-
             close(socket: Bun.ServerWebSocket<CustomTeamPlayerContainer>) {
                 const { player } = socket.data;
                 const team = player.team;
                 team.removePlayer(player);
-                if (!team.players.length) {
-                    customTeams?.delete(team.id);
-                }
+                if (!team.players.length) customTeams?.delete(team.id);
                 teamsCreated?.decrement(player.ip);
             }
-        }
+        },
+        ...(existsSync(clientRoot) ? { routes: clientRoute } : {})
     });
 
-    process.stdout.write("\x1Bc"); // clears screen
-    serverLog(`Suroi Server v${version}`);
+    process.stdout.write("\x1Bc");
+    serverLog(`Daze Survival Server v${version}`);
     serverLog(`Listening on ${Config.hostname}:${Config.port}`);
     serverLog("Press Ctrl+C to exit.");
-
     void gameManager.newGame(0);
 }

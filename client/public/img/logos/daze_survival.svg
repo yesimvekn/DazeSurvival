@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="280" viewBox="0 0 900 280" role="img" aria-labelledby="title desc">
+  <title id="title">Daze Survival</title>
+  <desc id="desc">Daze Survival battle royale</desc>
+  <defs>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffe18a"/><stop offset="1" stop-color="#f3a83b"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="5" flood-color="#182017" flood-opacity=".65"/></filter>
+  </defs>
+  <g filter="url(#shadow)" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-weight="900">
+    <text x="450" y="148" font-size="130" letter-spacing="3" fill="#fff" stroke="#344334" stroke-width="12" paint-order="stroke">DAZE</text>
+    <text x="450" y="230" font-size="60" letter-spacing="18" fill="url(#gold)" stroke="#344334" stroke-width="8" paint-order="stroke">SURVIVAL</text>
+  </g>
+</svg>

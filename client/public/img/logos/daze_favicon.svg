@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Daze Survival</title>
+  <rect x="22" y="22" width="468" height="468" rx="108" fill="#42643b" stroke="#f6cf70" stroke-width="18"/>
+  <path d="M148 116h94c88 0 144 54 144 140s-56 140-144 140h-94z" fill="#fff" stroke="#263b2b" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M210 181v150h31c47 0 75-27 75-75s-28-75-75-75z" fill="#42643b"/>
+  <circle cx="368" cy="127" r="24" fill="#f6cf70"/>
+</svg>
